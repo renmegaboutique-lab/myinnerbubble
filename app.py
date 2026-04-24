@@ -118,29 +118,54 @@ count = len(filtered_messages)
 st.caption(f"{count} whisper{'s' if count != 1 else ''}")
 
 # Display messages
+# Replace your current message display section with this
+
 if filtered_messages:
     for msg in filtered_messages:
-        recipient_html = ""
-        if msg["to"]:
-            recipient_html = f"""
-            <div class="message-to">
-                To: {msg["to"]}
-            </div>
-            """
-
+        recipient = msg["to"] if msg["to"] else "Anonymous"
         timestamp = msg["time"].strftime("%b %d · %I:%M %p")
 
-        st.markdown(f"""
-        <div class="message-card">
-            {recipient_html}
-            <div class="message-text">
-                {msg["text"]}
+        with st.container():
+            st.markdown(f"""
+            <div style="
+                background: linear-gradient(135deg, #1a1a24, #202032);
+                padding: 25px;
+                border-radius: 18px;
+                margin-bottom: 20px;
+                border: 1px solid rgba(255,255,255,0.08);
+                box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+            ">
+                <div style="
+                    color: #c8a96e;
+                    font-style: italic;
+                    font-size: 1.15rem;
+                    margin-bottom: 15px;
+                    font-family: Georgia, serif;
+                ">
+                    To: {recipient}
+                </div>
+
+                <div style="
+                    color: #e8e0d0;
+                    font-size: 1rem;
+                    line-height: 1.8;
+                    margin-bottom: 18px;
+                    white-space: pre-wrap;
+                    word-wrap: break-word;
+                ">
+                    {msg["text"]}
+                </div>
+
+                <div style="
+                    color: #8a8490;
+                    font-size: 0.8rem;
+                    border-top: 1px solid rgba(255,255,255,0.06);
+                    padding-top: 12px;
+                ">
+                    ✦ Anonymous • {timestamp}
+                </div>
             </div>
-            <div class="message-meta">
-                Anonymous • {timestamp}
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
 else:
     if search:
         st.info(f'No messages found for "{search}".')
