@@ -125,47 +125,42 @@ if filtered_messages:
         recipient = msg["to"] if msg["to"] else "Anonymous"
         timestamp = msg["time"].strftime("%b %d · %I:%M %p")
 
-        with st.container():
-            st.markdown(f"""
-            <div style="
-                background: linear-gradient(135deg, #1a1a24, #202032);
-                padding: 25px;
-                border-radius: 18px;
-                margin-bottom: 20px;
-                border: 1px solid rgba(255,255,255,0.08);
-                box-shadow: 0 8px 30px rgba(0,0,0,0.25);
-            ">
-                <div style="
-                    color: #c8a96e;
-                    font-style: italic;
-                    font-size: 1.15rem;
-                    margin-bottom: 15px;
-                    font-family: Georgia, serif;
-                ">
-                    To: {recipient}
-                </div>
+        st.markdown(
+            f"""
+<div style="background: linear-gradient(135deg, #1a1a24, #202032);
+            padding: 25px;
+            border-radius: 18px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255,255,255,0.08);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.25);">
 
-                <div style="
-                    color: #e8e0d0;
-                    font-size: 1rem;
-                    line-height: 1.8;
-                    margin-bottom: 18px;
-                    white-space: pre-wrap;
-                    word-wrap: break-word;
-                ">
-                    {msg["text"]}
-                </div>
+    <div style="color: #c8a96e;
+                font-style: italic;
+                font-size: 1.15rem;
+                margin-bottom: 15px;
+                font-family: Georgia, serif;">
+        To: {recipient}
+    </div>
 
-                <div style="
-                    color: #8a8490;
-                    font-size: 0.8rem;
-                    border-top: 1px solid rgba(255,255,255,0.06);
-                    padding-top: 12px;
-                ">
-                    ✦ Anonymous • {timestamp}
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+    <div style="color: #e8e0d0;
+                font-size: 1rem;
+                line-height: 1.8;
+                margin-bottom: 18px;
+                white-space: pre-wrap;
+                overflow-wrap: break-word;">
+        {msg["text"]}
+    </div>
+
+    <div style="color: #8a8490;
+                font-size: 0.8rem;
+                border-top: 1px solid rgba(255,255,255,0.06);
+                padding-top: 12px;">
+        ✦ Anonymous • {timestamp}
+    </div>
+</div>
+            """,
+            unsafe_allow_html=True
+        )
 else:
     if search:
         st.info(f'No messages found for "{search}".')
