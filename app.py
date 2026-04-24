@@ -1,49 +1,53 @@
 import streamlit as st
 from datetime import datetime
-import json
-import os
+import sqlite3
 import html
 
-# ── Config ──────────────────────────────────────────────
+# ── Page config ──────────────────────────────────────────
 st.set_page_config(
     page_title="Whisper Wall",
     page_icon="💌",
     layout="centered"
 )
 
-MESSAGES_FILE = "messages.json"  # saved next to your app.py
+# ── Database setup ───────────────────────────────────────
+# Creates whispers.db automatically the first time — you never need to touch it
+def get_db():
+    conn = sqlite3.connect("whispers.db", check_same_thread=False)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS messages (
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            recipient TEXT,
+            text      TEXT NOT NULL,
+            created   TEXT NOT NULL
+        )
+    """)
+    conn.commit()
+    return conn
 
-# ── Persistence helpers ──────────────────────────────────
 def load_messages():
-    """Load messages from disk. Returns empty list if file doesn't exist yet."""
-    if not os.path.exists(MESSAGES_FILE):
-        return []
-    try:
-        with open(MESSAGES_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        # Convert stored ISO strings back to datetime objects
-        for msg in data:
-            if isinstance(msg["time"], str):
-                msg["time"] = datetime.fromisoformat(msg["time"])
-        return data
-    except (json.JSONDecodeError, KeyError):
-        return []
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT recipient, text, created FROM messages ORDER BY id DESC"
+    ).fetchall()
+    conn.close()
+    return [
+        {
+            "to":   row[0] or "",
+            "text": row[1],
+            "time": datetime.fromisoformat(row[2]),
+        }
+        for row in rows
+    ]
 
-def save_messages(messages):
-    """Save messages to disk, converting datetimes to ISO strings."""
-    serialisable = []
-    for msg in messages:
-        serialisable.append({
-            "to":   msg["to"],
-            "text": msg["text"],
-            "time": msg["time"].isoformat() if isinstance(msg["time"], datetime) else msg["time"],
-        })
-    with open(MESSAGES_FILE, "w", encoding="utf-8") as f:
-        json.dump(serialisable, f, ensure_ascii=False, indent=2)
-
-# ── Load into session state once per session ─────────────
-if "messages" not in st.session_state:
-    st.session_state.messages = load_messages()
+def save_message(recipient, text):
+    conn = get_db()
+    conn.execute(
+        "INSERT INTO messages (recipient, text, created) VALUES (?, ?, ?)",
+        (recipient, text, datetime.now().isoformat())
+    )
+    conn.commit()
+    conn.close()
 
 # ── Styles ───────────────────────────────────────────────
 st.markdown("""
@@ -62,8 +66,6 @@ st.markdown("""
         margin-bottom: 2rem;
         font-family: Georgia, serif;
     }
-
-    /* Input / textarea overrides */
     .stTextInput > div > div > input,
     .stTextArea > div > div > textarea {
         background-color: #1a1a24 !important;
@@ -71,20 +73,15 @@ st.markdown("""
         border: 1px solid rgba(255,255,255,0.1) !important;
         border-radius: 10px !important;
     }
-
-    /* Submit button */
     .stFormSubmitButton > button {
         background-color: #c8a96e !important;
         color: #0d0d0f !important;
         font-weight: 600 !important;
         border: none !important;
         border-radius: 8px !important;
-        padding: 0.5rem 1.5rem !important;
         width: 100% !important;
     }
     .stFormSubmitButton > button:hover { opacity: 0.85 !important; }
-
-    div[data-testid="stDivider"] { border-color: rgba(255,255,255,0.07); }
 </style>
 """, unsafe_allow_html=True)
 
@@ -103,13 +100,7 @@ with st.form("whisper_form", clear_on_submit=True):
 
     if submitted:
         if message.strip():
-            new_msg = {
-                "to":   recipient.strip(),
-                "text": message.strip(),
-                "time": datetime.now(),
-            }
-            st.session_state.messages.insert(0, new_msg)
-            save_messages(st.session_state.messages)   # ← persist to disk
+            save_message(recipient.strip(), message.strip())
             st.success("✦ Your message has been shared")
         else:
             st.error("Please write a message first.")
@@ -122,13 +113,12 @@ search = st.text_input(
     placeholder="Type your name to see messages left for you…"
 ).strip().lower()
 
-# ── Filter ───────────────────────────────────────────────
-filtered = st.session_state.messages
+# ── Load & filter ────────────────────────────────────────
+all_messages = load_messages()
+filtered = all_messages
+
 if search:
-    filtered = [
-        m for m in filtered
-        if m["to"] and search in m["to"].lower()
-    ]
+    filtered = [m for m in all_messages if search in m["to"].lower()]
 
 # ── Count ────────────────────────────────────────────────
 count = len(filtered)
@@ -142,7 +132,7 @@ if filtered:
     for msg in filtered:
         to_name   = html.escape(msg["to"]) if msg["to"] else "Anonymous"
         body      = html.escape(msg["text"])
-        timestamp = msg["time"].strftime("%b %d · %I:%M %p") if isinstance(msg["time"], datetime) else str(msg["time"])
+        timestamp = msg["time"].strftime("%b %d · %I:%M %p")
 
         st.markdown(f"""
 <div style="
@@ -152,7 +142,6 @@ if filtered:
     margin-bottom: 18px;
     border: 1px solid rgba(255,255,255,0.08);
     box-shadow: 0 6px 28px rgba(0,0,0,0.3);
-    position: relative;
 ">
     <div style="
         color: #c8a96e;
@@ -160,7 +149,6 @@ if filtered:
         font-size: 1.05rem;
         margin-bottom: 12px;
         font-family: Georgia, serif;
-        letter-spacing: 0.02em;
     ">To: {to_name}</div>
 
     <div style="
@@ -186,14 +174,14 @@ if filtered:
 else:
     if search:
         st.markdown(f"""
-<div style="text-align:center; padding: 40px 0; color: #6b6570; font-family: Georgia, serif; font-style: italic;">
+<div style="text-align:center; padding:40px 0; color:#6b6570; font-family:Georgia,serif; font-style:italic;">
     No messages found for "<strong style="color:#c8a96e">{html.escape(search)}</strong>" yet…<br>
     <span style="font-size:0.85rem">maybe someone's still writing one ✨</span>
 </div>
         """, unsafe_allow_html=True)
     else:
         st.markdown("""
-<div style="text-align:center; padding: 40px 0; color: #6b6570; font-family: Georgia, serif; font-style: italic;">
+<div style="text-align:center; padding:40px 0; color:#6b6570; font-family:Georgia,serif; font-style:italic;">
     No whispers yet. Be the first to speak.
 </div>
         """, unsafe_allow_html=True)
