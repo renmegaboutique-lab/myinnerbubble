@@ -120,10 +120,15 @@ st.caption(f"{count} whisper{'s' if count != 1 else ''}")
 # Display messages
 # Replace your current message display section with this
 
+import html  # add this at the top of your file
+
 if filtered_messages:
     for msg in filtered_messages:
         recipient = msg["to"] if msg["to"] else "Anonymous"
         timestamp = msg["time"].strftime("%b %d · %I:%M %p")
+        
+        safe_text = html.escape(msg["text"])          # ← this is the fix
+        safe_recipient = html.escape(str(recipient))  # ← also escape the name
 
         st.markdown(
             f"""
@@ -133,24 +138,21 @@ if filtered_messages:
             margin-bottom: 20px;
             border: 1px solid rgba(255,255,255,0.08);
             box-shadow: 0 8px 30px rgba(0,0,0,0.25);">
-
     <div style="color: #c8a96e;
                 font-style: italic;
                 font-size: 1.15rem;
                 margin-bottom: 15px;
                 font-family: Georgia, serif;">
-        To: {recipient}
+        To: {safe_recipient}
     </div>
-
     <div style="color: #e8e0d0;
                 font-size: 1rem;
                 line-height: 1.8;
                 margin-bottom: 18px;
                 white-space: pre-wrap;
                 overflow-wrap: break-word;">
-        {msg["text"]}
+        {safe_text}
     </div>
-
     <div style="color: #8a8490;
                 font-size: 0.8rem;
                 border-top: 1px solid rgba(255,255,255,0.06);
